@@ -611,6 +611,27 @@
       border-color: rgba(99,102,241,.6);
     }
 
+    .btn-enrich {
+      background: rgba(245,158,11,.12);
+      border-color: rgba(245,158,11,.35);
+      color: #fcd34d;
+    }
+    .btn-enrich:hover {
+      background: rgba(245,158,11,.22);
+      border-color: rgba(245,158,11,.6);
+    }
+
+    .btn-sheet {
+      background: rgba(59,130,246,.12);
+      border-color: rgba(59,130,246,.35);
+      color: #93c5fd;
+      text-decoration: none;
+    }
+    .btn-sheet:hover {
+      background: rgba(59,130,246,.22);
+      border-color: rgba(59,130,246,.6);
+    }
+
     /* ─── Table ─── */
     .table-wrap {
       overflow-x: auto;
@@ -1010,6 +1031,12 @@
           <button class="btn-action btn-export" onclick="exportCSV()">
             <i class="fa-solid fa-file-csv"></i> Export CSV
           </button>
+          <button class="btn-action btn-enrich" onclick="enrichEmails()">
+            <i class="fa-solid fa-envelope-open-text"></i> Enrich Emails
+          </button>
+          <a class="btn-action btn-sheet" href="https://docs.google.com/spreadsheets/d/1VQ3hPkEm_rXn5JURPQEDHjlYz5Dw_a-RSfGsmfTuwd0" target="_blank">
+            <i class="fa-brands fa-google-drive"></i> Open Sheet
+          </a>
         </div>
       </div>
 
@@ -1433,6 +1460,31 @@
       () => showToast('Table copied to clipboard!', 'success'),
       () => showToast('Copy failed — try manual select.', 'error'),
     );
+  }
+
+  // ══════════════════════════════════════════
+  //  EMAIL ENRICHMENT
+  // ══════════════════════════════════════════
+  async function enrichEmails() {
+    if (!allLeads.length) { showToast('No leads yet — search first.', 'error'); return; }
+    const withWebsite = allLeads.filter(l => l.website && l.website.trim());
+    if (!withWebsite.length) { showToast('No websites in current leads to enrich.', 'error'); return; }
+
+    showToast(`Enriching ${withWebsite.length} leads in background…`, 'info');
+
+    try {
+      await fetch(`${N8N_BASE}/webhook/enrich-emails`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': '1'
+        },
+        body: JSON.stringify({ leads: withWebsite })
+      });
+      showToast(`Enrichment started! Emails will appear in your Google Sheet in ~1 min.`, 'success');
+    } catch (err) {
+      showToast('Enrichment failed: ' + err.message, 'error');
+    }
   }
 
   // ══════════════════════════════════════════
