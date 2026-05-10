@@ -1026,6 +1026,7 @@
               <th>Name</th>
               <th>Title</th>
               <th>Company</th>
+              <th>Website</th>
               <th>Email</th>
               <th>Phone</th>
               <th>Score</th>
@@ -1279,6 +1280,9 @@
         <td class="td-name">${esc(lead.first_name || lead.name || '—')} ${esc(lead.last_name || '')}</td>
         <td class="td-title">${esc(lead.title || lead.job_title || '—')}</td>
         <td class="td-company">${esc(lead.company || lead.company_name || '—')}</td>
+        <td class="td-website">${lead.website
+          ? `<a href="${esc(lead.website)}" target="_blank" style="color:var(--accent-3);font-size:.82em;word-break:break-all;">${esc(lead.website.replace(/^https?:\/\/(www\.)?/,'').split('/')[0])}</a>`
+          : '<span style="color:var(--text-dim)">—</span>'}</td>
         <td class="td-email">${lead.email
           ? `<a href="mailto:${esc(lead.email)}">${esc(lead.email)}</a>`
           : '<span style="color:var(--text-dim)">—</span>'}</td>
@@ -1388,35 +1392,39 @@
   // ══════════════════════════════════════════
   function exportCSV() {
     if (!allLeads.length) { showToast('No leads to export.', 'error'); return; }
-    const headers = ['#','First Name','Last Name','Title','Company','Email','Phone','Score'];
+    const headers = ['#','First Name','Last Name','Title','Company','Website','Email','Phone','Rating','Score'];
     const rows = allLeads.map((l, i) => [
       i+1,
       l.first_name || l.name || '',
       l.last_name || '',
       l.title || l.job_title || '',
       l.company || l.company_name || '',
+      l.website || '',
       l.email || '',
       l.phone || '',
+      l.rating || '',
       l.score || l.lead_score || '',
     ]);
-    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = '﻿' + [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `leadforge_${Date.now()}.csv`;
+    a.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv));
+    a.setAttribute('download', `leadforge_leads_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     showToast(`${allLeads.length} leads exported!`, 'success');
   }
 
   function copyTable() {
     if (!allLeads.length) { showToast('No leads to copy.', 'error'); return; }
-    const rows = [['#','First Name','Last Name','Title','Company','Email','Phone']];
+    const rows = [['#','First Name','Last Name','Title','Company','Website','Email','Phone']];
     allLeads.forEach((l, i) => rows.push([
       i+1,
       l.first_name || l.name || '',
       l.last_name || '',
       l.title || '',
       l.company || l.company_name || '',
+      l.website || '',
       l.email || '',
       l.phone || '',
     ]));
