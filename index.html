@@ -1242,11 +1242,15 @@
   }
 
   function extractLeads(data) {
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.leads)) return data.leads;
-    if (data && Array.isArray(data.data)) return data.data;
-    if (data && Array.isArray(data.results)) return data.results;
-    return [];
+    let candidates = [];
+    if (Array.isArray(data)) candidates = data;
+    else if (data && Array.isArray(data.leads))   candidates = data.leads;
+    else if (data && Array.isArray(data.data))    candidates = data.data;
+    else if (data && Array.isArray(data.results)) candidates = data.results;
+    // Filter out error-wrapper objects — keep only real lead objects
+    return candidates.filter(l =>
+      l && (l.company_name || l.company || l.name || l.first_name || l.email || l.phone)
+    );
   }
 
   // ══════════════════════════════════════════
