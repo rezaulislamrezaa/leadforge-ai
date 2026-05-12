@@ -426,7 +426,7 @@
     <div class="filter-grid" style="margin-bottom: 20px;">
       <div class="form-group">
         <label><i class="fa-solid fa-briefcase"></i> Industry Category</label>
-        <select id="sel-industry" multiple size="4">
+        <select id="sel-industry">
           <option value="">— All Industries —</option>
           <option value="Real Estate">🏠 Real Estate</option>
           <option value="Restaurant">🍔 Restaurant & Food Service</option>
@@ -452,7 +452,6 @@
           <option value="Event Planning">🎉 Event Planning</option>
         </select>
       </div>
-        <div class="multi-hint"><i class="fa-solid fa-info-circle"></i> Hold <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> to select multiple industries</div>
       </div>
       <div class="form-group">
         <label><i class="fa-solid fa-building"></i> Company Size</label>
@@ -903,14 +902,14 @@
   }
 
   function gatherFilters() {
-    const industryEl = document.getElementById('sel-industry');
-    const selectedOptions = industryEl ? [...industryEl.selectedOptions].map(o => o.value).filter(Boolean) : [];
+    const industryVal = document.getElementById('sel-industry')?.value || '';
+    const industries  = industryVal ? [industryVal] : [];
     return {
       country:    document.getElementById('sel-country').value,
       state:      document.getElementById('sel-state').value,
       city:       document.getElementById('sel-city').value,
-      industry:   selectedOptions[0] || '',
-      industries: selectedOptions,
+      industry:   industryVal,
+      industries: industries,
       size:       document.getElementById('sel-size').value,
       keyword:    document.getElementById('inp-keyword').value.trim(),
       linkedin:   document.getElementById('sel-linkedin').value,
