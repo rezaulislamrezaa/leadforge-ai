@@ -280,6 +280,22 @@
     .table-loading p { color: var(--text-muted); font-size: 14px; font-weight: 500; }
 
     @media (max-width: 768px) { header { padding: 16px 24px; } .hero { padding: 40px 16px 32px; } .card { padding: 22px 16px; } }
+
+    /* ─── Settings Modal ─── */
+    .btn-settings { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-muted); padding: 6px 10px; cursor: pointer; font-size: 15px; transition: all .2s; }
+    .btn-settings:hover { border-color: var(--accent-2); color: var(--accent-2); }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; width: min(480px, 92vw); }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    .modal-field label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 6px; }
+    .modal-field input { width: 100%; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px; padding: 10px 12px; font-family: monospace; }
+    .modal-field input:focus { outline: none; border-color: var(--accent-2); }
+    .modal-hint { font-size: 11px; color: var(--text-dim); margin-top: 5px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+    .btn-modal-save { background: var(--accent-1); color: #fff; border: none; border-radius: var(--radius-sm); padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn-modal-save:hover { background: var(--accent-2); }
+    .btn-modal-cancel { background: none; border: 1px solid var(--border); color: var(--text-muted); border-radius: var(--radius-sm); padding: 9px 16px; font-size: 13px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -300,8 +316,25 @@
   <div class="header-badges">
     <span class="badge badge-version">v3.0 ULTRA</span>
     <span class="badge badge-live" id="live-badge">AI POWERED</span>
+    <button class="btn-settings" onclick="openSettings()" title="Settings">&#9881;</button>
   </div>
 </header>
+
+<!-- ─── SETTINGS MODAL ─── -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal-box">
+    <div class="modal-title">&#9881; Settings</div>
+    <div class="modal-field">
+      <label>n8n Server URL (ngrok)</label>
+      <input type="text" id="input-n8n-url" placeholder="https://your-ngrok-url.ngrok-free.app" />
+      <div class="modal-hint">ngrok URL পরিবর্তন হলে এখানে আপডেট করুন। Browser-এ সেভ থাকবে।</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeSettings()">Cancel</button>
+      <button class="btn-modal-save" onclick="saveSettings()">Save &amp; Apply</button>
+    </div>
+  </div>
+</div>
 
 <!-- ─── MAIN ─── -->
 <div class="container">
@@ -595,12 +628,27 @@
   // ══════════════════════════════════════════
   //  CONFIG
   // ══════════════════════════════════════════
-  const N8N_BASE      = 'https://cymbocephalous-unparochially-julene.ngrok-free.dev';
+  const N8N_DEFAULT   = 'https://cymbocephalous-unparochially-julene.ngrok-free.dev';
+  let   N8N_BASE      = (localStorage.getItem('lf_n8n_url') || N8N_DEFAULT).replace(/\/$/, '');
   const WEBHOOK_PATH  = '/webhook/leadforge';
   const ENRICH_PATH   = '/webhook/enrich-emails';
   const MASTER_PATH   = '/webhook/master-discovery';
   const COUNTRIES_API = 'https://countriesnow.space/api/v0.1';
   const SHEET_URL     = 'https://docs.google.com/spreadsheets/d/1VQ3hPkEm_rXn5JURPQEDHjlYz5Dw_a-RSfGsmfTuwd0';
+
+  function openSettings() {
+    document.getElementById('input-n8n-url').value = N8N_BASE;
+    document.getElementById('settings-modal').classList.add('open');
+  }
+  function closeSettings() {
+    document.getElementById('settings-modal').classList.remove('open');
+  }
+  function saveSettings() {
+    const url = document.getElementById('input-n8n-url').value.trim().replace(/\/$/, '');
+    if (url) { N8N_BASE = url; localStorage.setItem('lf_n8n_url', url); }
+    closeSettings();
+    showToast('n8n URL saved!', 'success');
+  }
 
   let allLeads    = [];
   let miningTimer = null;
@@ -700,7 +748,7 @@
     startTimer();
 
     try {
-      const res = await fetch(`${N8N_BASE}${WEBHOOK_PATH}`, {
+      const res = await fetch(`${N8N_BASE}${MASTER_PATH}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' },
         body: JSON.stringify({ filters, meta: { source: 'LeadForge AI v3.0 Ultra', timestamp: new Date().toISOString() } }),
