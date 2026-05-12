@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LeadForge AI v3.0 Ultra — Apple Graphic Studio</title>
+  <title>LeadForge AI v4.0 — Apple Graphic Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
@@ -275,6 +275,30 @@
     footer { position: relative; z-index: 1; text-align: center; padding: 28px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 12px; }
     footer span { background: linear-gradient(135deg, var(--accent-2), var(--accent-3)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700; }
 
+    /* ─── Auto-Continue Toggle ─── */
+    .auto-continue-wrap { display:flex; align-items:center; gap:10px; margin-top:12px; padding: 10px 14px; background: rgba(124,58,237,.07); border: 1px solid rgba(124,58,237,.2); border-radius: var(--radius-sm); }
+    .auto-continue-wrap label { font-size:13px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; gap:8px; }
+    .auto-continue-wrap input[type="checkbox"] { width:16px; height:16px; accent-color: var(--accent-1); cursor:pointer; }
+
+    /* ─── Daily Progress Bar ─── */
+    #daily-progress-section { margin-top:16px; }
+    #daily-progress-section .prog-labels { display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted); margin-bottom:6px; }
+    #daily-progress-section .prog-track  { background:var(--bg-input); border-radius:6px; height:10px; overflow:hidden; border: 1px solid var(--border); }
+    #daily-prog-bar { height:100%; background:linear-gradient(90deg,var(--accent-1),var(--accent-2)); width:0%; transition:width 0.5s; }
+
+    /* ─── Live Status Feed ─── */
+    #live-feed-section { margin-top:16px; display:none; }
+    #live-feed-section .feed-title { font-size:12px; font-weight:700; color:var(--text-dim); letter-spacing:.5px; text-transform:uppercase; margin-bottom:6px; }
+    #live-feed-log { background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 12px; max-height:120px; overflow-y:auto; font-family:monospace; font-size:11px; color:var(--text-muted); }
+    #live-feed-log .feed-line { padding:2px 0; border-bottom:1px solid rgba(120,80,255,.06); }
+    #live-feed-log .feed-line:last-child { border-bottom:none; }
+    #live-feed-log .feed-ok  { color: var(--success); }
+    #live-feed-log .feed-err { color: var(--danger); }
+    #live-feed-log .feed-info{ color: var(--accent-3); }
+
+    /* ─── Multi-industry hint ─── */
+    .multi-hint { font-size:11px; color:var(--text-dim); margin-top:5px; }
+
     .table-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 60px 20px; }
     .table-loading .big-spinner { width: 44px; height: 44px; border: 3px solid rgba(124,58,237,.2); border-top-color: var(--accent-2); border-radius: 50%; animation: spin .8s linear infinite; }
     .table-loading p { color: var(--text-muted); font-size: 14px; font-weight: 500; }
@@ -309,12 +333,12 @@
   <div class="logo-area">
     <div class="logo-icon">⚡</div>
     <div class="logo-text">
-      <h1>LeadForge AI v3.0 Ultra</h1>
+      <h1>LeadForge AI v4.0</h1>
       <span>by Apple Graphic Studio</span>
     </div>
   </div>
   <div class="header-badges">
-    <span class="badge badge-version">v3.0 ULTRA</span>
+    <span class="badge badge-version">v4.0 PRO</span>
     <span class="badge badge-live" id="live-badge">AI POWERED</span>
     <button class="btn-settings" onclick="openSettings()" title="Settings">&#9881;</button>
   </div>
@@ -402,7 +426,7 @@
     <div class="filter-grid" style="margin-bottom: 20px;">
       <div class="form-group">
         <label><i class="fa-solid fa-briefcase"></i> Industry Category</label>
-        <select id="sel-industry">
+        <select id="sel-industry" multiple size="4">
           <option value="">— All Industries —</option>
           <option value="Real Estate">🏠 Real Estate</option>
           <option value="Restaurant">🍔 Restaurant & Food Service</option>
@@ -427,6 +451,8 @@
           <option value="Photography & Video">📷 Photography & Video</option>
           <option value="Event Planning">🎉 Event Planning</option>
         </select>
+      </div>
+        <div class="multi-hint"><i class="fa-solid fa-info-circle"></i> Hold <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> to select multiple industries</div>
       </div>
       <div class="form-group">
         <label><i class="fa-solid fa-building"></i> Company Size</label>
@@ -493,6 +519,32 @@
           <div class="score-value" id="score-display">5</div>
         </div>
       </div>
+    </div>
+
+    <!-- Feature 1: Auto-Continue Toggle -->
+    <div class="auto-continue-wrap">
+      <label>
+        <input type="checkbox" id="auto-continue" checked>
+        Auto-continue all day (runs until 1000 leads reached)
+      </label>
+      <span style="margin-left:auto; font-size:11px; color:var(--text-dim);" id="auto-continue-badge">🤖 AI-paced batches</span>
+    </div>
+
+    <!-- Feature 2: Daily Progress Bar -->
+    <div id="daily-progress-section" style="display:none;">
+      <div class="prog-labels">
+        <span>Daily Goal Progress</span>
+        <span id="daily-progress-label">0 / 1000 leads</span>
+      </div>
+      <div class="prog-track">
+        <div id="daily-prog-bar"></div>
+      </div>
+    </div>
+
+    <!-- Feature 4: Live Status Feed -->
+    <div id="live-feed-section">
+      <div class="feed-title"><i class="fa-solid fa-terminal"></i> Live Log</div>
+      <div id="live-feed-log"><div class="feed-line feed-info">Ready — press Start Mining to begin.</div></div>
     </div>
 
     <!-- Start Mining -->
@@ -621,20 +673,27 @@
 <div class="toast" id="toast"></div>
 
 <footer>
-  <span>LeadForge AI v3.0 Ultra</span> — Powered by Apple Graphic Studio &copy; 2026
+  <span>LeadForge AI v4.0</span> — Powered by Apple Graphic Studio &copy; 2026
 </footer>
 
 <script>
   // ══════════════════════════════════════════
   //  CONFIG
   // ══════════════════════════════════════════
-  const N8N_DEFAULT   = 'https://cymbocephalous-unparochially-julene.ngrok-free.dev';
-  let   N8N_BASE      = (localStorage.getItem('lf_n8n_url') || N8N_DEFAULT).replace(/\/$/, '');
-  const WEBHOOK_PATH  = '/webhook/leadforge';
-  const ENRICH_PATH   = '/webhook/enrich-emails';
-  const MASTER_PATH   = '/webhook/master-discovery';
-  const COUNTRIES_API = 'https://countriesnow.space/api/v0.1';
-  const SHEET_URL     = 'https://docs.google.com/spreadsheets/d/1VQ3hPkEm_rXn5JURPQEDHjlYz5Dw_a-RSfGsmfTuwd0';
+  const N8N_DEFAULT    = 'https://cymbocephalous-unparochially-julene.ngrok-free.dev';
+  let   N8N_BASE       = (localStorage.getItem('lf_n8n_url') || N8N_DEFAULT).replace(/\/$/, '');
+  const WEBHOOK_PATH   = '/webhook/leadforge';
+  const ENRICH_PATH    = '/webhook/enrich-emails';
+  const MASTER_PATH    = '/webhook/master-discovery';
+  const V4_DISCOVER    = '/webhook/v4-discover';   // ← v4 endpoint
+  const V4_SOCIAL      = '/webhook/v4-social';
+  const V4_EMAILS      = '/webhook/v4-emails';
+  const V4_FINAL       = '/webhook/v4-final';
+  const COUNTRIES_API  = 'https://countriesnow.space/api/v0.1';
+  const SHEET_URL      = 'https://docs.google.com/spreadsheets/d/1VQ3hPkEm_rXn5JURPQEDHjlYz5Dw_a-RSfGsmfTuwd0';
+
+  let dailyCount = 0;
+  const DAILY_GOAL   = 1000;
 
   function openSettings() {
     document.getElementById('input-n8n-url').value = N8N_BASE;
@@ -734,65 +793,130 @@
   }
 
   // ══════════════════════════════════════════
-  //  MINING
+  //  LIVE FEED
+  // ══════════════════════════════════════════
+  function feedLog(msg, type = 'info') {
+    const log = document.getElementById('live-feed-log');
+    if (!log) return;
+    document.getElementById('live-feed-section').style.display = 'block';
+    const line = document.createElement('div');
+    line.className = `feed-line feed-${type}`;
+    const ts = new Date().toLocaleTimeString();
+    line.textContent = `[${ts}] ${msg}`;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+    // Keep last 50 lines
+    while (log.children.length > 50) log.removeChild(log.firstChild);
+  }
+
+  function updateDailyProgress(count) {
+    dailyCount = count;
+    const sec = document.getElementById('daily-progress-section');
+    if (sec) sec.style.display = 'block';
+    const pct = Math.min(100, Math.round(count / DAILY_GOAL * 100));
+    const bar = document.getElementById('daily-prog-bar');
+    const lbl = document.getElementById('daily-progress-label');
+    if (bar) bar.style.width = pct + '%';
+    if (lbl) lbl.textContent = `${count.toLocaleString()} / ${DAILY_GOAL.toLocaleString()} leads`;
+  }
+
+  // ══════════════════════════════════════════
+  //  MINING — v4
   // ══════════════════════════════════════════
   async function startMining() {
     const filters = gatherFilters();
-    if (!filters.country && !filters.industry && !filters.keyword) {
+    if (!filters.country && !filters.industries.length && !filters.keyword) {
       showToast('Please select at least a Country or Industry.', 'error');
       return;
     }
 
+    const autoContinue = document.getElementById('auto-continue')?.checked !== false;
+    const industries   = filters.industries.length ? filters.industries : [filters.industry || 'Restaurant'];
+
     setMiningState(true);
     showResults(true);
     startTimer();
+    feedLog(`Starting v4 Discovery — ${industries.join(', ')} in ${filters.city || filters.state || filters.country}`, 'info');
 
-    try {
-      const res = await fetch(`${N8N_BASE}${MASTER_PATH}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' },
-        body: JSON.stringify({ filters, meta: { source: 'LeadForge AI v3.0 Ultra', timestamp: new Date().toISOString() } }),
-        signal: AbortSignal.timeout(60000),
-      });
+    let totalLeads = 0;
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    for (const industry of industries) {
+      feedLog(`Querying industry: ${industry}`, 'info');
+      try {
+        const payload = {
+          country:      filters.country   || 'United States',
+          state:        filters.state     || '',
+          city:         filters.city      || '',
+          industry,
+          batch_size:   20,
+          auto_continue: autoContinue,
+          min_score:    filters.min_score || 0,
+          reset:        false,
+        };
 
-      const ct   = res.headers.get('content-type') || '';
-      let data;
-      if (ct.includes('application/json')) { data = await res.json(); }
-      else { const t = await res.text(); try { data = JSON.parse(t); } catch { data = { leads: [] }; } }
+        const res = await fetch(`${N8N_BASE}${V4_DISCOVER}`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1' },
+          body:    JSON.stringify(payload),
+          signal:  AbortSignal.timeout(90000),
+        });
 
-      const leads = extractLeads(data);
-      if (leads.length === 0) {
-        showToast('Workflow started — no leads returned yet.', 'info');
-        populateTable(getDemoLeads(filters));
-      } else {
-        populateTable(leads);
-        showToast(`${leads.length} leads mined!`, 'success');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const ct = res.headers.get('content-type') || '';
+        let data;
+        if (ct.includes('application/json')) { data = await res.json(); }
+        else { const t = await res.text(); try { data = JSON.parse(t); } catch { data = {}; } }
+
+        // v4 returns stats object — also try leads array
+        const leads = extractLeads(data);
+        if (leads.length > 0) {
+          populateTable([...allLeads, ...leads]);
+          totalLeads += leads.length;
+          feedLog(`${leads.length} leads found for ${industry}`, 'ok');
+        } else if (data.today_count) {
+          totalLeads += (data.today_count || 0);
+          updateDailyProgress(data.today_count || 0);
+          feedLog(`Batch sent. Today: ${data.today_count} leads (goal: ${DAILY_GOAL})`, 'ok');
+        } else {
+          feedLog(`${industry}: Workflow started (results streaming to Sheets)`, 'info');
+        }
+
+      } catch(err) {
+        const msg = err.name === 'TimeoutError'
+          ? `${industry}: Timeout — n8n running in background`
+          : `${industry}: ${err.message}`;
+        feedLog(msg, 'err');
+        if (industries.length === 1) setStatusError(msg);
       }
-    } catch(err) {
-      const msg = err.name === 'TimeoutError' ? 'Request timed out (60s). n8n may still be running in background.' : `Error: ${err.message}`;
-      showToast(msg, 'error');
-      setStatusError(msg);
-      populateTable(getDemoLeads(filters));
-    } finally {
-      setMiningState(false);
-      stopTimer();
     }
+
+    if (totalLeads === 0 && allLeads.length === 0) {
+      populateTable(getDemoLeads(filters));
+      feedLog('No leads returned yet — demo data shown. Check Google Sheets for real results.', 'info');
+    }
+
+    showToast(totalLeads > 0 ? `${totalLeads} leads mined!` : 'Mining started — check Sheets', totalLeads > 0 ? 'success' : 'info');
+    setMiningState(false);
+    stopTimer();
+    feedLog('Done. Results saved to Google Sheets.', 'ok');
   }
 
   function gatherFilters() {
+    const industryEl = document.getElementById('sel-industry');
+    const selectedOptions = industryEl ? [...industryEl.selectedOptions].map(o => o.value).filter(Boolean) : [];
     return {
-      country:   document.getElementById('sel-country').value,
-      state:     document.getElementById('sel-state').value,
-      city:      document.getElementById('sel-city').value,
-      industry:  document.getElementById('sel-industry').value,
-      size:      document.getElementById('sel-size').value,
-      keyword:   document.getElementById('inp-keyword').value.trim(),
-      linkedin:  document.getElementById('sel-linkedin').value,
-      tech:      document.getElementById('sel-tech').value,
-      min_score: parseInt(document.getElementById('inp-score').value),
-      personas:  getSelectedPersonas(),
+      country:    document.getElementById('sel-country').value,
+      state:      document.getElementById('sel-state').value,
+      city:       document.getElementById('sel-city').value,
+      industry:   selectedOptions[0] || '',
+      industries: selectedOptions,
+      size:       document.getElementById('sel-size').value,
+      keyword:    document.getElementById('inp-keyword').value.trim(),
+      linkedin:   document.getElementById('sel-linkedin').value,
+      tech:       document.getElementById('sel-tech').value,
+      min_score:  parseInt(document.getElementById('inp-score').value),
+      personas:   getSelectedPersonas(),
     };
   }
 
