@@ -216,15 +216,6 @@
     .spinner { display: none; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ─── Status Bar ─── */
-    .status-bar { display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 14px 20px; background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25); border-radius: var(--radius-md); margin-top: 24px; }
-    .status-bar.active { display: flex; }
-    .status-bar.error  { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.25); }
-    .status-item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
-    .status-item i { font-size: 14px; }
-    .status-item.ok i   { color: var(--success); }
-    .status-item.warn i { color: var(--warning); }
-    .status-item.err i  { color: var(--danger); }
     .stat-count { font-size: 22px; font-weight: 900; color: var(--accent-2); }
 
     .progress-wrap { display: none; margin-top: 8px; height: 4px; background: rgba(124,58,237,.15); border-radius: 99px; overflow: hidden; }
@@ -271,16 +262,6 @@
     .btn-sync:hover { background: rgba(16,185,129,.22); border-color: rgba(16,185,129,.6); }
     .btn-sync:disabled { opacity: .5; cursor: not-allowed; }
 
-    /* ─── Pipeline Dashboard ─── */
-    .pipeline-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 4px; }
-    @media (max-width: 768px) { .pipeline-grid { grid-template-columns: repeat(2, 1fr); } }
-    .pipe-stat { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 18px; text-align: center; }
-    .pipe-stat-val { font-size: 30px; font-weight: 900; color: var(--text-primary); line-height: 1; margin-bottom: 4px; }
-    .pipe-stat-lbl { font-size: 11px; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-    .pipe-stat-bar { height: 3px; border-radius: 99px; margin-top: 10px; background: var(--bg-deep); overflow: hidden; }
-    .pipe-stat-bar-fill { height: 100%; border-radius: 99px; transition: width .6s ease; }
-    .pbf-purple { background: linear-gradient(90deg, var(--accent-1), var(--accent-2)); }
-    .pbf-cyan   { background: linear-gradient(90deg, var(--accent-3), #22d3ee); }
     .pbf-green  { background: linear-gradient(90deg, var(--success), #34d399); }
     .pbf-amber  { background: linear-gradient(90deg, var(--warning), #fbbf24); }
 
@@ -1189,7 +1170,7 @@
       }, 1000);
       // Show two-button layout
       document.getElementById('wrap-start').style.display  = 'none';
-      document.getElementById('wrap-mining').style.display = 'flex';
+      document.getElementById('wrap-mining').style.display = 'block';
       showResults(true);
       showBackgroundPanel();
       startPolling();
