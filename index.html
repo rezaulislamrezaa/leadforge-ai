@@ -1535,6 +1535,11 @@
   //  SYNC TO SHEETS
   // ══════════════════════════════════════════
   async function syncToSheets() {
+    // v4 saves directly to Sheets — open the sheet directly
+    window.open('https://docs.google.com/spreadsheets/d/1VQ3hPkEm_rXn5JURPQEDHjlYz5Dw_a-RSfGsmfTuwd0', '_blank');
+    showToast('Google Sheets খোলা হচ্ছে — Leads tab-এ সব data আছে', 'info');
+    return;
+    // Legacy sync (kept for reference, not used in v4):
     if (!allLeads.length) { showToast('No leads to sync.', 'error'); return; }
     const btn = document.getElementById('btn-sync');
     btn.disabled = true;
