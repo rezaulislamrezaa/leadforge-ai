@@ -305,6 +305,31 @@
     #empty-state i { font-size: 48px; color: var(--text-dim); display: block; margin-bottom: 16px; }
     #empty-state p { color: var(--text-dim); font-size: 15px; }
 
+    /* ─── System Monitor ─── */
+    #sys-monitor {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 16px;
+      margin-bottom: 14px; font-size: 12px; color: var(--text-muted);
+    }
+    .mon-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+      transition: background .4s;
+    }
+    .mon-dot.running  { background: #10b981; box-shadow: 0 0 0 0 rgba(16,185,129,.5); animation: mon-pulse 1.4s infinite; }
+    .mon-dot.stopped  { background: #ef4444; }
+    .mon-dot.unknown  { background: #5a5478; }
+    @keyframes mon-pulse {
+      0%   { box-shadow: 0 0 0 0   rgba(16,185,129,.5); }
+      70%  { box-shadow: 0 0 0 8px rgba(16,185,129,0);  }
+      100% { box-shadow: 0 0 0 0   rgba(16,185,129,0);  }
+    }
+    .mon-status-running { color: #10b981; font-weight: 700; }
+    .mon-status-stopped { color: #ef4444; font-weight: 700; }
+    .mon-sep { color: var(--text-dim); margin: 0 2px; }
+    .mon-val { color: var(--text-primary); font-weight: 600; }
+    #mon-refresh-ts { margin-left: auto; font-size: 10px; color: var(--text-dim); }
+
     /* ─── Toast ─── */
     .toast { position: fixed; bottom: 32px; right: 32px; padding: 14px 22px; border-radius: var(--radius-md); font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 10px; z-index: 9999; transform: translateY(80px); opacity: 0; transition: all .35s cubic-bezier(.34,1.56,.64,1); max-width: 380px; }
     .toast.show { transform: translateY(0); opacity: 1; }
@@ -651,6 +676,19 @@
       <div class="rtabs">
         <button class="rtab active" id="rtab-live" onclick="showResultsTab('live')">📊 Live Results</button>
         <button class="rtab" id="rtab-history" onclick="showResultsTab('history')">📅 Mining History</button>
+      </div>
+
+      <!-- ─── System Monitor Bar ─── -->
+      <div id="sys-monitor">
+        <span class="mon-dot unknown" id="mon-dot"></span>
+        <span id="mon-status-text" style="font-weight:600;">API Key সেট করুন → Monitor চালু হবে</span>
+        <span class="mon-sep">|</span>
+        <span>শেষ batch: <span class="mon-val" id="mon-last-run">—</span></span>
+        <span class="mon-sep">|</span>
+        <span>Execution: <span class="mon-val" id="mon-last-id">—</span></span>
+        <span class="mon-sep">|</span>
+        <span>Speed: <span class="mon-val" id="mon-rate">—</span></span>
+        <span id="mon-refresh-ts"></span>
       </div>
 
       <!-- Live Results Pane -->
@@ -1174,6 +1212,78 @@
         stopPolling(); // 3 বার fail হলে polling বন্ধ
       }
     }
+  }
+
+  // ─── System Monitor ───────────────────────
+  let monTimer = null;
+
+  async function refreshMonitor() {
+    const dot        = document.getElementById('mon-dot');
+    const statusTxt  = document.getElementById('mon-status-text');
+    const lastRunEl  = document.getElementById('mon-last-run');
+    const lastIdEl   = document.getElementById('mon-last-id');
+    const rateEl     = document.getElementById('mon-rate');
+    const tsEl       = document.getElementById('mon-refresh-ts');
+
+    tsEl.textContent = 'Updated: ' + new Date().toLocaleTimeString();
+
+    const apiKey = localStorage.getItem('lf_n8n_api') || '';
+    if (!apiKey) {
+      dot.className = 'mon-dot unknown';
+      statusTxt.textContent = '⚙ API Key সেট করুন → Monitor চালু হবে';
+      statusTxt.className = '';
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${N8N_BASE}/api/v1/executions?workflowId=${DISCOVERY_WF_ID}&limit=20`,
+        { headers: { 'X-N8N-API-KEY': apiKey, 'ngrok-skip-browser-warning': '1' }, signal: AbortSignal.timeout(8000) }
+      );
+      if (!res.ok) throw new Error('api-err');
+      const data = await res.json();
+      const execs = data.data || [];
+
+      if (!execs.length) {
+        dot.className = 'mon-dot unknown';
+        statusTxt.textContent = 'কোনো execution নেই';
+        return;
+      }
+
+      const latest   = execs[0];
+      const lastTime = new Date(latest.stoppedAt || latest.startedAt);
+      const secAgo   = Math.round((Date.now() - lastTime) / 1000);
+
+      const oneHrAgo    = Date.now() - 3600000;
+      const recentCount = execs.filter(e => new Date(e.startedAt) > oneHrAgo).length;
+
+      if (secAgo < 90) {
+        dot.className        = 'mon-dot running';
+        statusTxt.textContent = '● Workflow চলছে';
+        statusTxt.className  = 'mon-status-running';
+      } else {
+        dot.className        = 'mon-dot stopped';
+        statusTxt.textContent = '● Workflow থেমে গেছে';
+        statusTxt.className  = 'mon-status-stopped';
+      }
+
+      if      (secAgo < 60)   lastRunEl.textContent = secAgo + 's আগে';
+      else if (secAgo < 3600) lastRunEl.textContent = Math.round(secAgo / 60) + 'm আগে';
+      else                    lastRunEl.textContent = Math.round(secAgo / 3600) + 'h আগে';
+
+      lastIdEl.textContent = '#' + latest.id;
+      rateEl.textContent   = recentCount + ' batch/hr';
+
+    } catch {
+      dot.className        = 'mon-dot unknown';
+      statusTxt.textContent = '⚠ n8n-এ পৌঁছানো যাচ্ছে না';
+      statusTxt.className  = '';
+    }
+  }
+
+  function startMonitor() {
+    refreshMonitor();
+    if (!monTimer) monTimer = setInterval(refreshMonitor, 20000);
   }
 
   // ──────────────────────────────────────────
@@ -1744,6 +1854,7 @@
   loadCountries();
   restoreSession();
   renderHistory();
+  startMonitor();
 </script>
 </body>
 </html>
