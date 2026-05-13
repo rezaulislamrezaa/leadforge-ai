@@ -227,10 +227,28 @@
     .status-item.err i  { color: var(--danger); }
     .stat-count { font-size: 22px; font-weight: 900; color: var(--accent-2); }
 
-    .progress-wrap { display: none; margin-top: 16px; height: 4px; background: rgba(124,58,237,.15); border-radius: 99px; overflow: hidden; }
+    .progress-wrap { display: none; margin-top: 8px; height: 4px; background: rgba(124,58,237,.15); border-radius: 99px; overflow: hidden; }
     .progress-wrap.active { display: block; }
     .progress-bar { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--accent-1), var(--accent-3)); width: 0%; transition: width .4s ease; animation: progress-glow 2s ease infinite alternate; }
     @keyframes progress-glow { 0% { box-shadow: 0 0 4px var(--glow-purple); } 100% { box-shadow: 0 0 12px var(--glow-cyan); } }
+
+    /* ─── Inner Lead Type Tabs ─── */
+    .ltabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin:0 0 16px; }
+    .ltab { padding:7px 16px; font-size:12px; font-weight:600; color:var(--text-dim); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; transition:all .15s; font-family:'Inter',sans-serif; white-space:nowrap; }
+    .ltab.active { color:var(--accent-2); border-bottom-color:var(--accent-2); }
+    .ltab:hover { color:var(--text-primary); }
+
+    /* ─── New row flash animation ─── */
+    @keyframes row-flash { 0%{background:rgba(16,185,129,.18);} 100%{background:transparent;} }
+    .row-new { animation:row-flash 2s ease forwards; }
+
+    /* ─── Mining Active Bar (sticky, below results) ─── */
+    #wrap-mining { display:none; position:sticky; bottom:20px; z-index:20; margin-top:20px; }
+    .mining-bar-inner { display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:var(--bg-card); border:1.5px solid rgba(0,255,136,.28); border-radius:var(--radius-md); padding:12px 20px; box-shadow:0 8px 32px rgba(0,0,0,.45); }
+    .mab-right { margin-left:auto; display:flex; align-items:center; gap:18px; }
+    .mab-stat { text-align:center; }
+    .mab-stat-val { font-size:20px; font-weight:900; color:var(--accent-2); }
+    .mab-stat-lbl { font-size:10px; color:var(--text-dim); font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
 
     /* ─── Results Section ─── */
     #results-section { display: none; margin-top: 32px; }
@@ -630,43 +648,6 @@
       </button>
     </div>
 
-    <!-- Mining Active: two buttons -->
-    <div class="mining-dual-btns" id="wrap-mining">
-      <div class="btn-bg-running">
-        <div class="run-dot"></div>
-        <div>
-          <div class="run-info-label">Background Mining চলছে</div>
-          <div class="run-info-sub" id="run-started-label">শুরু: —</div>
-        </div>
-      </div>
-      <button class="btn-stop-mining" onclick="stopMining()">
-        <div class="btn-stop-label">⏹ Stop Mining</div>
-        <div class="btn-stop-timer" id="stop-elapsed-label">0h 0m 0s</div>
-      </button>
-    </div>
-
-    <!-- Status Bar -->
-    <div class="status-bar" id="status-bar">
-      <div class="status-item ok">
-        <i class="fa-solid fa-circle-check"></i>
-        <span id="status-text">Connected to n8n</span>
-      </div>
-      <div style="display:flex; gap:24px;">
-        <div>
-          <div class="stat-count" id="stat-leads">0</div>
-          <div style="font-size:11px; color:var(--text-dim); font-weight:600;">LEADS FOUND</div>
-        </div>
-        <div>
-          <div class="stat-count" id="stat-time">0s</div>
-          <div style="font-size:11px; color:var(--text-dim); font-weight:600;">ELAPSED</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Progress -->
-    <div class="progress-wrap" id="progress-wrap">
-      <div class="progress-bar" id="progress-bar"></div>
-    </div>
   </div>
 
   <!-- ─── RESULTS SECTION ─── -->
@@ -693,6 +674,15 @@
 
       <!-- Live Results Pane -->
       <div id="live-pane">
+
+      <!-- Inner type tabs -->
+      <div class="ltabs">
+        <button class="ltab active" id="ltab-leads" onclick="showLeadTab('leads')">📊 Leads</button>
+        <button class="ltab" id="ltab-social" onclick="showLeadTab('social')">📱 Social</button>
+        <button class="ltab" id="ltab-email" onclick="showLeadTab('email')">📧 Email</button>
+      </div>
+
+      <div id="leads-pane">
       <div class="results-header">
         <div class="results-title">
           <i class="fa-solid fa-table-list"></i>
@@ -744,6 +734,32 @@
           <tbody id="leads-tbody"></tbody>
         </table>
       </div>
+      </div><!-- /leads-pane -->
+
+      <!-- Social Pane -->
+      <div id="social-pane" style="display:none;">
+        <div class="table-wrap">
+          <table id="social-table">
+            <thead>
+              <tr><th>#</th><th>Company</th><th>Category</th><th>LinkedIn</th><th>Facebook</th><th>Instagram</th><th>Score</th></tr>
+            </thead>
+            <tbody id="social-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Email Pane -->
+      <div id="email-pane" style="display:none;">
+        <div class="table-wrap">
+          <table id="email-table">
+            <thead>
+              <tr><th>#</th><th>Company</th><th>Category</th><th>Phone</th><th>Email</th><th>Website</th><th>Score</th></tr>
+            </thead>
+            <tbody id="email-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
       </div><!-- /live-pane -->
 
       <!-- History Pane -->
@@ -757,41 +773,39 @@
       </div>
     </div>
 
-    <!-- Pipeline Status Dashboard -->
-    <div class="card" id="pipeline-card" style="margin-top: 24px;">
-      <div class="card-title">
-        <i class="fa-solid fa-chart-line"></i>
-        Pipeline Status
+  </div>
+
+  <!-- ─── MINING ACTIVE BAR (sticky, shows when mining) ─── -->
+  <div id="wrap-mining">
+    <div class="mining-bar-inner">
+      <div class="run-dot"></div>
+      <div>
+        <div class="run-info-label">Background Mining চলছে</div>
+        <div class="run-info-sub" id="run-started-label">শুরু: —</div>
       </div>
-      <div class="pipeline-grid">
-        <div class="pipe-stat">
-          <div class="pipe-stat-val" id="pipe-discovered">0</div>
-          <div class="pipe-stat-lbl">Discovered</div>
-          <div class="pipe-stat-bar"><div class="pipe-stat-bar-fill pbf-purple" id="pbar-disc" style="width:0%"></div></div>
+      <div class="mab-right">
+        <div class="mab-stat">
+          <div class="mab-stat-val" id="stat-leads">0</div>
+          <div class="mab-stat-lbl">Leads</div>
         </div>
-        <div class="pipe-stat">
-          <div class="pipe-stat-val" id="pipe-enriched">0</div>
-          <div class="pipe-stat-lbl">Email Enriched</div>
-          <div class="pipe-stat-bar"><div class="pipe-stat-bar-fill pbf-cyan" id="pbar-enr" style="width:0%"></div></div>
+        <div class="mab-stat">
+          <div class="mab-stat-val" id="stat-time">0s</div>
+          <div class="mab-stat-lbl">Elapsed</div>
         </div>
-        <div class="pipe-stat">
-          <div class="pipe-stat-val" id="pipe-social">0</div>
-          <div class="pipe-stat-lbl">Has Social</div>
-          <div class="pipe-stat-bar"><div class="pipe-stat-bar-fill pbf-amber" id="pbar-soc" style="width:0%"></div></div>
-        </div>
-        <div class="pipe-stat">
-          <div class="pipe-stat-val" id="pipe-ready">0</div>
-          <div class="pipe-stat-lbl">Ready for Outreach</div>
-          <div class="pipe-stat-bar"><div class="pipe-stat-bar-fill pbf-green" id="pbar-rdy" style="width:0%"></div></div>
-        </div>
+        <button class="btn-stop-mining" onclick="stopMining()">
+          <div class="btn-stop-label">⏹ Stop Mining</div>
+          <div class="btn-stop-timer" id="stop-elapsed-label">0h 0m 0s</div>
+        </button>
       </div>
+    </div>
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-bar" id="progress-bar"></div>
     </div>
   </div>
 
 </div><!-- /container -->
 
-<!-- ─── HOW TO USE ─── -->
-<div style="position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:0 24px 80px;">
+<div style="position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:0 24px 80px;display:none;">
 
   <div class="card" style="margin-top:48px;">
     <div class="card-title">
@@ -1570,8 +1584,60 @@
       tbody.appendChild(tr);
     });
 
+    // Fill Social pane
+    const socialTbody = document.getElementById('social-tbody');
+    if (socialTbody) {
+      socialTbody.innerHTML = '';
+      leads.forEach((lead, i) => {
+        const linkedin  = lead.linkedin  || lead.linkedin_url  || '';
+        const facebook  = lead.facebook  || lead.facebook_url  || '';
+        const instagram = lead.instagram || lead.instagram_url || '';
+        const company   = esc(lead.company || lead.company_name || '—');
+        const category  = esc(lead.title || lead.type || lead.category || '—');
+        const score     = lead.score || lead.lead_score || 0;
+        const scoreClass = score >= 8 ? 'score-high' : score >= 5 ? 'score-medium' : 'score-low';
+        const tr = document.createElement('tr');
+        tr.className = i === leads.length - 1 ? 'row-new' : '';
+        tr.innerHTML = `
+          <td style="color:var(--text-dim);font-size:12px;">${i+1}</td>
+          <td class="td-company">${company}</td>
+          <td class="td-title">${category}</td>
+          <td>${linkedin  ? `<a href="${esc(linkedin)}"  target="_blank" class="social-icon social-li"><i class="fa-brands fa-linkedin-in"></i></a>` : '<span style="color:var(--text-dim)">—</span>'}</td>
+          <td>${facebook  ? `<a href="${esc(facebook)}"  target="_blank" class="social-icon social-fb"><i class="fa-brands fa-facebook-f"></i></a>` : '<span style="color:var(--text-dim)">—</span>'}</td>
+          <td>${instagram ? `<a href="${esc(instagram)}" target="_blank" class="social-icon social-ig"><i class="fa-brands fa-instagram"></i></a>` : '<span style="color:var(--text-dim)">—</span>'}</td>
+          <td><span class="score-pill ${scoreClass}">${score}/10</span></td>`;
+        socialTbody.appendChild(tr);
+      });
+    }
+
+    // Fill Email pane
+    const emailTbody = document.getElementById('email-tbody');
+    if (emailTbody) {
+      emailTbody.innerHTML = '';
+      leads.forEach((lead, i) => {
+        const company  = esc(lead.company || lead.company_name || '—');
+        const category = esc(lead.title || lead.type || lead.category || '—');
+        const phone    = lead.phone   || '';
+        const email    = lead.email   || '';
+        const website  = lead.website || '';
+        const score    = lead.score || lead.lead_score || 0;
+        const scoreClass = score >= 8 ? 'score-high' : score >= 5 ? 'score-medium' : 'score-low';
+        const tr = document.createElement('tr');
+        tr.className = i === leads.length - 1 ? 'row-new' : '';
+        tr.innerHTML = `
+          <td style="color:var(--text-dim);font-size:12px;">${i+1}</td>
+          <td class="td-company">${company}</td>
+          <td class="td-title">${category}</td>
+          <td class="td-phone">${phone ? `<a href="tel:${esc(phone)}">${esc(phone)}</a>` : '<span style="color:var(--text-dim)">—</span>'}</td>
+          <td class="td-email">${email ? `<a href="mailto:${esc(email)}">${esc(email)}</a>` : '<span style="color:var(--text-dim)">—</span>'}</td>
+          <td>${website ? `<a href="${esc(website)}" target="_blank" style="color:var(--accent-3);font-size:.82em;">${esc(website.replace(/^https?:\/\/(www\.)?/,'').split('/')[0])}</a>` : '<span style="color:var(--text-dim)">—</span>'}</td>
+          <td><span class="score-pill ${scoreClass}">${score}/10</span></td>`;
+        emailTbody.appendChild(tr);
+      });
+    }
+
     updateStatsStrip(leads.length, emailCount, socialCount, hotCount);
-    updatePipelineDashboard(leads.length, emailCount, socialCount, hotCount);
+    addToDailyStats(leads.length, emailCount, socialCount, hotCount);
   }
 
   function esc(str) {
@@ -1587,22 +1653,42 @@
   //  STATS & PIPELINE
   // ══════════════════════════════════════════
   function updateStatsStrip(total, emails, social, hot) {
-    document.getElementById('ss-total').textContent  = total;
-    document.getElementById('ss-emails').textContent = emails;
-    document.getElementById('ss-social').textContent = social;
-    document.getElementById('ss-hot').textContent    = hot;
+    // Show daily totals from localStorage (accumulates across sessions)
+    const daily = loadDailyStats();
+    document.getElementById('ss-total').textContent  = daily.total  || total;
+    document.getElementById('ss-emails').textContent = daily.emails || emails;
+    document.getElementById('ss-social').textContent = daily.social || social;
+    document.getElementById('ss-hot').textContent    = daily.hot    || hot;
   }
 
-  function updatePipelineDashboard(total, emails, social, hot) {
-    const pct = (n, d) => d > 0 ? Math.round(n / d * 100) : 0;
-    document.getElementById('pipe-discovered').textContent = total;
-    document.getElementById('pipe-enriched').textContent   = emails;
-    document.getElementById('pipe-social').textContent     = social;
-    document.getElementById('pipe-ready').textContent      = hot;
-    document.getElementById('pbar-disc').style.width = '100%';
-    document.getElementById('pbar-enr').style.width  = pct(emails, total) + '%';
-    document.getElementById('pbar-soc').style.width  = pct(social, total) + '%';
-    document.getElementById('pbar-rdy').style.width  = pct(hot, total) + '%';
+  // Daily stats — accumulates per calendar day
+  const LS_DAILY = 'lf_daily_' + new Date().toISOString().split('T')[0];
+
+  function loadDailyStats() {
+    try { return JSON.parse(localStorage.getItem(LS_DAILY) || '{}'); } catch { return {}; }
+  }
+
+  function addToDailyStats(total, emails, social, hot) {
+    const d = loadDailyStats();
+    // Use max of current session vs stored (avoid double-counting repeated calls)
+    d.total  = Math.max(d.total  || 0, total);
+    d.emails = Math.max(d.emails || 0, emails);
+    d.social = Math.max(d.social || 0, social);
+    d.hot    = Math.max(d.hot    || 0, hot);
+    try { localStorage.setItem(LS_DAILY, JSON.stringify(d)); } catch {}
+    document.getElementById('ss-total').textContent  = d.total;
+    document.getElementById('ss-emails').textContent = d.emails;
+    document.getElementById('ss-social').textContent = d.social;
+    document.getElementById('ss-hot').textContent    = d.hot;
+  }
+
+  function showLeadTab(tab) {
+    ['leads','social','email'].forEach(t => {
+      const pane = document.getElementById(t + '-pane');
+      const btn  = document.getElementById('ltab-' + t);
+      if (pane) pane.style.display = t === tab ? 'block' : 'none';
+      if (btn)  btn.classList.toggle('active', t === tab);
+    });
   }
 
   // ══════════════════════════════════════════
@@ -1711,12 +1797,11 @@
     const spinner = document.getElementById('btn-spinner');
     const pw      = document.getElementById('progress-wrap');
     const pb      = document.getElementById('progress-bar');
-    // Button visibility
     document.getElementById('wrap-start').style.display  = active ? 'none'  : 'flex';
-    document.getElementById('wrap-mining').style.display = active ? 'flex'  : 'none';
-    btn.disabled           = active;
-    label.textContent      = active ? 'Mining…' : 'Start Mining';
-    spinner.style.display  = active ? 'block' : 'none';
+    document.getElementById('wrap-mining').style.display = active ? 'block' : 'none';
+    btn.disabled          = active;
+    label.textContent     = active ? 'Mining…' : 'Start Mining';
+    spinner.style.display = active ? 'block' : 'none';
     pw.classList.toggle('active', active);
     if (active) {
       let w = 0;
@@ -1733,15 +1818,10 @@
 
   function showResults(visible) {
     document.getElementById('results-section').style.display = visible ? 'block' : 'none';
-    const bar = document.getElementById('status-bar');
-    bar.classList.remove('error'); bar.classList.add('active');
-    document.getElementById('status-text').textContent = 'Mining in progress…';
   }
 
   function setStatusError(msg) {
-    const bar = document.getElementById('status-bar');
-    bar.classList.add('error');
-    document.getElementById('status-text').textContent = msg;
+    feedLog('⚠ ' + msg, 'err');
   }
 
   function fmtElapsed(sec) {
@@ -1768,7 +1848,6 @@
 
   function stopTimer() {
     clearInterval(miningTimer);
-    document.getElementById('status-text').textContent = 'Mining complete';
   }
 
   // ══════════════════════════════════════════
@@ -1884,6 +1963,16 @@
   //  INIT
   // ══════════════════════════════════════════
   loadCountries();
+  // Load today's daily stats into strip on page load
+  (function() {
+    const d = loadDailyStats();
+    if (d.total) {
+      document.getElementById('ss-total').textContent  = d.total;
+      document.getElementById('ss-emails').textContent = d.emails || 0;
+      document.getElementById('ss-social').textContent = d.social || 0;
+      document.getElementById('ss-hot').textContent    = d.hot    || 0;
+    }
+  })();
   restoreSession();
   renderHistory();
   startMonitor();
