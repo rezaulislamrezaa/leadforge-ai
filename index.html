@@ -353,6 +353,11 @@
       <input type="text" id="input-n8n-url" placeholder="https://your-ngrok-url.ngrok-free.app" />
       <div class="modal-hint">ngrok URL পরিবর্তন হলে এখানে আপডেট করুন। Browser-এ সেভ থাকবে।</div>
     </div>
+    <div class="modal-field" style="margin-top:14px;">
+      <label>n8n API Key (workflow status দেখতে)</label>
+      <input type="password" id="input-n8n-api" placeholder="eyJhbGci..." />
+      <div class="modal-hint">Settings → n8n → API Keys থেকে কপি করুন। Live status polling-এর জন্য দরকার।</div>
+    </div>
     <div class="modal-actions">
       <button class="btn-modal-cancel" onclick="closeSettings()">Cancel</button>
       <button class="btn-modal-save" onclick="saveSettings()">Save &amp; Apply</button>
@@ -541,7 +546,10 @@
 
     <!-- Feature 4: Live Status Feed -->
     <div id="live-feed-section">
-      <div class="feed-title"><i class="fa-solid fa-terminal"></i> Live Log</div>
+      <div class="feed-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span><i class="fa-solid fa-terminal"></i> Live Log</span>
+        <button onclick="clearFeedLog()" style="background:none;border:1px solid #334;color:#556;font-size:11px;padding:2px 8px;border-radius:6px;cursor:pointer;" title="লগ মুছুন">✕ Clear</button>
+      </div>
       <div id="live-feed-log"><div class="feed-line feed-info">Ready — press Start Mining to begin.</div></div>
     </div>
 
@@ -837,6 +845,7 @@
 
   function openSettings() {
     document.getElementById('input-n8n-url').value = N8N_BASE;
+    document.getElementById('input-n8n-api').value = localStorage.getItem('lf_n8n_api') || '';
     document.getElementById('settings-modal').classList.add('open');
   }
   function closeSettings() {
@@ -845,6 +854,8 @@
   function saveSettings() {
     const url = document.getElementById('input-n8n-url').value.trim().replace(/\/$/, '');
     if (url) { N8N_BASE = url; localStorage.setItem('lf_n8n_url', url); }
+    const apiKey = document.getElementById('input-n8n-api').value.trim();
+    if (apiKey) localStorage.setItem('lf_n8n_api', apiKey);
     closeSettings();
     showToast('n8n URL saved!', 'success');
   }
@@ -935,18 +946,124 @@
   // ══════════════════════════════════════════
   //  LIVE FEED
   // ══════════════════════════════════════════
+  //  PERSISTENT SESSION — localStorage
+  // ══════════════════════════════════════════
+  const LS_LOG     = 'lf_feed_log';
+  const LS_SESSION = 'lf_session';
+  let   pollTimer  = null;
+
   function feedLog(msg, type = 'info') {
     const log = document.getElementById('live-feed-log');
     if (!log) return;
     document.getElementById('live-feed-section').style.display = 'block';
+    const ts = new Date().toLocaleTimeString();
     const line = document.createElement('div');
     line.className = `feed-line feed-${type}`;
-    const ts = new Date().toLocaleTimeString();
     line.textContent = `[${ts}] ${msg}`;
     log.appendChild(line);
     log.scrollTop = log.scrollHeight;
-    // Keep last 50 lines
-    while (log.children.length > 50) log.removeChild(log.firstChild);
+    while (log.children.length > 80) log.removeChild(log.firstChild);
+
+    // Persist to localStorage
+    try {
+      const entries = JSON.parse(localStorage.getItem(LS_LOG) || '[]');
+      entries.push({ msg, type, ts });
+      if (entries.length > 100) entries.splice(0, entries.length - 100);
+      localStorage.setItem(LS_LOG, JSON.stringify(entries));
+    } catch {}
+  }
+
+  function clearFeedLog() {
+    const log = document.getElementById('live-feed-log');
+    if (log) log.innerHTML = '<div class="feed-line feed-info">Log cleared.</div>';
+    localStorage.removeItem(LS_LOG);
+    localStorage.removeItem(LS_SESSION);
+    stopPolling();
+    // reset background panel to normal empty state
+    const emptyState = document.getElementById('empty-state');
+    if (emptyState) {
+      emptyState.innerHTML = '<i class="fa-solid fa-database"></i><p>No leads yet. Hit <strong>Start Mining</strong> to begin.</p>';
+      emptyState.style.display = 'block';
+    }
+  }
+
+  function restoreSession() {
+    // Restore live log
+    try {
+      const entries = JSON.parse(localStorage.getItem(LS_LOG) || '[]');
+      if (entries.length > 0) {
+        const log = document.getElementById('live-feed-log');
+        log.innerHTML = '';
+        entries.forEach(({ msg, type, ts }) => {
+          const line = document.createElement('div');
+          line.className = `feed-line feed-${type}`;
+          line.textContent = `[${ts}] ${msg}`;
+          log.appendChild(line);
+        });
+        log.scrollTop = log.scrollHeight;
+        document.getElementById('live-feed-section').style.display = 'block';
+      }
+    } catch {}
+
+    // Restore background panel + polling if session was active
+    try {
+      const session = JSON.parse(localStorage.getItem(LS_SESSION) || 'null');
+      if (session?.active) {
+        showBackgroundPanel();
+        startPolling();
+        feedLog(`(Session restored) Mining was active for ${session.industry || ''} in ${session.city || session.state || session.country || ''} — checking n8n status…`, 'info');
+      }
+    } catch {}
+  }
+
+  // ──────────────────────────────────────────
+  //  POLLING — n8n execution status every 30s
+  // ──────────────────────────────────────────
+  const DISCOVERY_WF_ID = 'ZLWioSuUtTM0W2Yy';
+
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(checkN8nStatus, 30000);
+    setTimeout(checkN8nStatus, 2000); // immediate first check
+  }
+
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  async function checkN8nStatus() {
+    const apiKey = localStorage.getItem('lf_n8n_api') || '';
+    if (!apiKey) return;
+    try {
+      const res = await fetch(
+        `${N8N_BASE}/api/v1/executions?workflowId=${DISCOVERY_WF_ID}&status=running&limit=5`,
+        { headers: { 'Authorization': `Bearer ${apiKey}`, 'ngrok-skip-browser-warning': '1' } }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const running = data.data?.length || 0;
+      if (running > 0) {
+        feedLog(`n8n: Discovery workflow চলছে (${running} execution active) — Sheets-এ leads আসছে`, 'ok');
+      } else {
+        // check recent finished executions
+        const res2 = await fetch(
+          `${N8N_BASE}/api/v1/executions?workflowId=${DISCOVERY_WF_ID}&status=success&limit=1`,
+          { headers: { 'Authorization': `Bearer ${apiKey}`, 'ngrok-skip-browser-warning': '1' } }
+        );
+        const data2 = await res2.json();
+        const lastRun = data2.data?.[0];
+        if (lastRun) {
+          const finishedAt = new Date(lastRun.stoppedAt).toLocaleTimeString();
+          feedLog(`n8n: Workflow শেষ হয়েছে (${finishedAt}) — Google Sheets-এ leads চেক করুন`, 'info');
+        } else {
+          feedLog(`n8n: কোনো active execution নেই — workflow থেমে গেছে বা সম্পন্ন`, 'info');
+        }
+        stopPolling();
+        localStorage.removeItem(LS_SESSION);
+      }
+    } catch (e) {
+      feedLog(`n8n status check failed: ${e.message}`, 'err');
+    }
   }
 
   function updateDailyProgress(count) {
@@ -976,6 +1093,17 @@
     setMiningState(true);
     showResults(true);
     startTimer();
+
+    // Save session so log & state survive page refresh
+    try {
+      localStorage.setItem(LS_SESSION, JSON.stringify({
+        active: true, startedAt: new Date().toISOString(),
+        industry: industries.join(', '),
+        city: filters.city, state: filters.state, country: filters.country
+      }));
+    } catch {}
+    startPolling();
+
     feedLog(`Starting v4 Discovery — ${industries.join(', ')} in ${filters.city || filters.state || filters.country}`, 'info');
 
     let totalLeads = 0;
@@ -1348,6 +1476,7 @@
   //  INIT
   // ══════════════════════════════════════════
   loadCountries();
+  restoreSession();
 </script>
 </body>
 </html>
