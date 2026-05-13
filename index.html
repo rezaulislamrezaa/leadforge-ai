@@ -157,6 +157,46 @@
 
     /* ─── Mine Button ─── */
     .mine-btn-wrap { display: flex; justify-content: center; margin-top: 36px; }
+    /* Two-button mining state */
+    .mining-dual-btns { display: none; justify-content: center; align-items: stretch; gap: 14px; flex-wrap: wrap; margin-top: 36px; }
+    .btn-bg-running {
+      display: inline-flex; align-items: center; gap: 12px;
+      padding: 14px 24px; border-radius: 14px; border: 1.5px solid #00ff8855;
+      background: rgba(0,255,136,.07); color: #00ff88; cursor: default; font-family: 'Inter',sans-serif;
+    }
+    .run-dot { width: 9px; height: 9px; border-radius: 50%; background: #00ff88; flex-shrink: 0;
+      animation: dot-pulse 1.3s ease infinite; }
+    @keyframes dot-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.6)} }
+    .run-info-label { font-size: 14px; font-weight: 700; }
+    .run-info-sub { font-size: 11px; color: #88ccaa; margin-top: 3px; }
+    .btn-stop-mining {
+      display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      padding: 14px 28px; border-radius: 14px; border: 1.5px solid #ef444455;
+      background: linear-gradient(135deg,#2d0a0a,#450f0f); color: #fca5a5;
+      cursor: pointer; font-family: 'Inter',sans-serif; transition: all .2s;
+    }
+    .btn-stop-mining:hover { background: linear-gradient(135deg,#450f0f,#7f1d1d); border-color: #ef4444aa; color: #fff; }
+    .btn-stop-label { font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 7px; }
+    .btn-stop-timer { font-size: 11px; color: #fca5a588; margin-top: 1px; letter-spacing: .3px; }
+
+    /* ─── Results Tabs ─── */
+    .rtabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+    .rtab { padding: 10px 22px; font-size: 13px; font-weight: 600; color: var(--text-dim); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all .15s; font-family:'Inter',sans-serif; }
+    .rtab:hover { color: var(--text); }
+    .rtab.active { color: var(--accent-2); border-bottom-color: var(--accent-2); }
+
+    /* ─── History Table ─── */
+    #history-pane { display: none; }
+    .hist-empty { text-align:center; padding: 40px 20px; color: var(--text-dim); font-size: 13px; }
+    .hist-wrap { overflow-x: auto; }
+    .hist-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .hist-table th { text-align:left; padding: 8px 10px; background: rgba(255,255,255,.03); color: var(--text-dim); font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .hist-table td { padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,.04); color: var(--text); white-space: nowrap; font-size: 12px; }
+    .hist-table tr:last-child td { border-bottom: none; }
+    .hist-table tr:hover td { background: rgba(255,255,255,.025); }
+    .hist-leads-badge { display:inline-block; padding:2px 9px; border-radius:8px; font-size:11px; font-weight:700; background:rgba(124,58,237,.2); color:#c4b5fd; }
+    .hist-more-link { display:block; text-align:center; margin-top:14px; padding:10px; font-size:12px; color:var(--accent-3); text-decoration:none; border:1px solid var(--border); border-radius:8px; transition:all .2s; }
+    .hist-more-link:hover { background: rgba(6,182,212,.08); border-color: var(--accent-3); }
     .btn-mine {
       position: relative; display: inline-flex; align-items: center; gap: 12px;
       padding: 18px 56px; font-family: 'Inter', sans-serif; font-size: 17px; font-weight: 800;
@@ -557,11 +597,26 @@
     </div>
 
     <!-- Start Mining -->
-    <div class="mine-btn-wrap">
+    <div class="mine-btn-wrap" id="wrap-start">
       <button class="btn-mine" id="btn-mine" onclick="startMining()">
         <span class="btn-icon">⚡</span>
         <span id="btn-label">Start Mining</span>
         <div class="spinner" id="btn-spinner"></div>
+      </button>
+    </div>
+
+    <!-- Mining Active: two buttons -->
+    <div class="mining-dual-btns" id="wrap-mining">
+      <div class="btn-bg-running">
+        <div class="run-dot"></div>
+        <div>
+          <div class="run-info-label">Background Mining চলছে</div>
+          <div class="run-info-sub" id="run-started-label">শুরু: —</div>
+        </div>
+      </div>
+      <button class="btn-stop-mining" onclick="stopMining()">
+        <div class="btn-stop-label">⏹ Stop Mining</div>
+        <div class="btn-stop-timer" id="stop-elapsed-label">0h 0m 0s</div>
       </button>
     </div>
 
@@ -592,6 +647,14 @@
   <!-- ─── RESULTS SECTION ─── -->
   <div id="results-section">
     <div class="card">
+      <!-- Results Tabs -->
+      <div class="rtabs">
+        <button class="rtab active" id="rtab-live" onclick="showResultsTab('live')">📊 Live Results</button>
+        <button class="rtab" id="rtab-history" onclick="showResultsTab('history')">📅 Mining History</button>
+      </div>
+
+      <!-- Live Results Pane -->
+      <div id="live-pane">
       <div class="results-header">
         <div class="results-title">
           <i class="fa-solid fa-table-list"></i>
@@ -642,6 +705,17 @@
           </thead>
           <tbody id="leads-tbody"></tbody>
         </table>
+      </div>
+      </div><!-- /live-pane -->
+
+      <!-- History Pane -->
+      <div id="history-pane">
+        <div id="history-content">
+          <div class="hist-empty"><i class="fa-solid fa-clock-rotate-left" style="font-size:28px;margin-bottom:10px;display:block;"></i>এখনো কোনো mining session রেকর্ড নেই।</div>
+        </div>
+        <a class="hist-more-link" href="https://docs.google.com/spreadsheets/d/1VQ3hPkEm_rXn5JURPQEDHjlYz5Dw_a-RSfGsmfTuwd0" target="_blank" id="hist-sheets-link" style="display:none;">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> ১ মাসের বেশি পুরোনো সব history Google Sheets-এ দেখুন
+        </a>
       </div>
     </div>
 
@@ -1008,13 +1082,33 @@
       }
     } catch {}
 
-    // Restore background panel + polling if session was active
+    // Restore dual-button + polling if session was active
     try {
       const session = JSON.parse(localStorage.getItem(LS_SESSION) || 'null');
       if (session?.active) {
+        miningStartTs = session.startTs || Date.now();
+        // Restore elapsed timer display
+        const elapsedMs  = Date.now() - miningStartTs;
+        elapsedSec = Math.round(elapsedMs / 1000);
+        const startLabel = document.getElementById('run-started-label');
+        if (startLabel) startLabel.textContent = 'শুরু: ' + new Date(miningStartTs).toLocaleTimeString();
+        const elLabel = document.getElementById('stop-elapsed-label');
+        if (elLabel) elLabel.textContent = fmtElapsed(elapsedSec);
+        // Resume ticking
+        clearInterval(miningTimer);
+        miningTimer = setInterval(() => {
+          elapsedSec++;
+          const el = document.getElementById('stop-elapsed-label');
+          if (el) el.textContent = fmtElapsed(elapsedSec);
+          document.getElementById('stat-time').textContent = fmtElapsed(elapsedSec);
+        }, 1000);
+        // Show two-button layout
+        document.getElementById('wrap-start').style.display  = 'none';
+        document.getElementById('wrap-mining').style.display = 'flex';
+        showResults(true);
         showBackgroundPanel();
         startPolling();
-        feedLog(`(Session restored) Mining was active for ${session.industry || ''} in ${session.city || session.state || session.country || ''} — checking n8n status…`, 'info');
+        feedLog(`(페이지 복원) Mining চলছে — ${session.industry || ''} in ${session.city || session.state || session.country || ''} | শুরু: ${new Date(miningStartTs).toLocaleTimeString()}`, 'info');
       }
     } catch {}
   }
@@ -1139,6 +1233,7 @@
     try {
       localStorage.setItem(LS_SESSION, JSON.stringify({
         active: true, startedAt: new Date().toISOString(),
+        startTs: Date.now(),
         industry: industries.join(', '),
         city: filters.city, state: filters.state, country: filters.country
       }));
@@ -1205,9 +1300,12 @@
     }
 
     showToast(totalLeads > 0 ? `${totalLeads} leads mined!` : 'Mining started — check Sheets', totalLeads > 0 ? 'success' : 'info');
-    setMiningState(false);
-    stopTimer();
-    feedLog('Done. Results are streaming into Google Sheets — open the sheet to see them.', 'ok');
+    // Keep dual-button layout active — user will press Stop Mining when done
+    // Only hide spinner/progress bar but keep the two buttons showing
+    document.getElementById('btn-spinner').style.display = 'none';
+    document.getElementById('progress-wrap').classList.remove('active');
+    document.getElementById('btn-label').textContent = 'Start Mining';
+    feedLog('n8n workflow triggered — Mining চলছে background-এ। শেষ হলে "Stop Mining" চাপুন।', 'ok');
   }
 
   function gatherFilters() {
@@ -1458,12 +1556,17 @@
   // ══════════════════════════════════════════
   //  UI STATE
   // ══════════════════════════════════════════
+  let miningStartTs = null; // epoch ms when mining started
+
   function setMiningState(active) {
     const btn     = document.getElementById('btn-mine');
     const label   = document.getElementById('btn-label');
     const spinner = document.getElementById('btn-spinner');
     const pw      = document.getElementById('progress-wrap');
     const pb      = document.getElementById('progress-bar');
+    // Button visibility
+    document.getElementById('wrap-start').style.display  = active ? 'none'  : 'flex';
+    document.getElementById('wrap-mining').style.display = active ? 'flex'  : 'none';
     btn.disabled           = active;
     label.textContent      = active ? 'Mining…' : 'Start Mining';
     spinner.style.display  = active ? 'block' : 'none';
@@ -1494,11 +1597,128 @@
     document.getElementById('status-text').textContent = msg;
   }
 
-  function startTimer() {
-    elapsedSec = 0; clearInterval(miningTimer);
-    miningTimer = setInterval(() => { document.getElementById('stat-time').textContent = `${++elapsedSec}s`; }, 1000);
+  function fmtElapsed(sec) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return h > 0 ? `${h}h ${m}m ${s}s` : m > 0 ? `${m}m ${s}s` : `${s}s`;
   }
-  function stopTimer() { clearInterval(miningTimer); document.getElementById('status-text').textContent = 'Mining complete'; }
+
+  function startTimer() {
+    elapsedSec = 0;
+    miningStartTs = Date.now();
+    clearInterval(miningTimer);
+    // Set start label on dual button
+    const startLabel = document.getElementById('run-started-label');
+    if (startLabel) startLabel.textContent = 'শুরু: ' + new Date().toLocaleTimeString();
+    miningTimer = setInterval(() => {
+      elapsedSec++;
+      document.getElementById('stat-time').textContent = fmtElapsed(elapsedSec);
+      const el = document.getElementById('stop-elapsed-label');
+      if (el) el.textContent = fmtElapsed(elapsedSec);
+    }, 1000);
+  }
+
+  function stopTimer() {
+    clearInterval(miningTimer);
+    document.getElementById('status-text').textContent = 'Mining complete';
+  }
+
+  // ══════════════════════════════════════════
+  //  STOP MINING + HISTORY
+  // ══════════════════════════════════════════
+  const LS_HISTORY = 'lf_history';
+
+  function stopMining() {
+    stopTimer();
+    stopPolling();
+    setMiningState(false);
+
+    // Build session record
+    const endTs  = Date.now();
+    const startTs = miningStartTs || endTs;
+    const durSec  = Math.round((endTs - startTs) / 1000);
+    const session = JSON.parse(localStorage.getItem(LS_SESSION) || 'null') || {};
+    const entry = {
+      id:        'sess_' + startTs,
+      date:      new Date(startTs).toLocaleDateString('en-GB'),
+      startTime: new Date(startTs).toLocaleTimeString(),
+      endTime:   new Date(endTs).toLocaleTimeString(),
+      startTs,  endTs,
+      duration:  durSec < 5 ? '< 5s' : fmtElapsed(durSec),
+      country:   session.country  || '—',
+      state:     session.state    || '—',
+      city:      session.city     || '—',
+      industry:  session.industry || '—',
+      leads:     document.getElementById('stat-leads')?.textContent || '0',
+    };
+    saveHistoryEntry(entry);
+    localStorage.removeItem(LS_SESSION);
+    feedLog(`Mining stopped. Duration: ${entry.duration} | Leads this run: ${entry.leads}`, 'ok');
+    showToast('Mining stopped — session saved to History', 'info');
+    renderHistory();
+  }
+
+  function saveHistoryEntry(entry) {
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000; // 30 days
+    let hist = [];
+    try { hist = JSON.parse(localStorage.getItem(LS_HISTORY) || '[]'); } catch {}
+    hist = hist.filter(e => (e.startTs || 0) >= cutoff); // prune old
+    hist.unshift(entry); // newest first
+    if (hist.length > 200) hist = hist.slice(0, 200);
+    localStorage.setItem(LS_HISTORY, JSON.stringify(hist));
+  }
+
+  function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(LS_HISTORY) || '[]'); } catch { return []; }
+  }
+
+  function renderHistory() {
+    const hist = loadHistory();
+    const container = document.getElementById('history-content');
+    const moreLink  = document.getElementById('hist-sheets-link');
+    if (!container) return;
+    if (hist.length === 0) {
+      container.innerHTML = '<div class="hist-empty"><i class="fa-solid fa-clock-rotate-left" style="font-size:28px;margin-bottom:10px;display:block;"></i>এখনো কোনো mining session রেকর্ড নেই।</div>';
+      if (moreLink) moreLink.style.display = 'none';
+      return;
+    }
+    // Show "View in Sheets" link always (old data is there)
+    if (moreLink) moreLink.style.display = 'block';
+
+    const cols = ['তারিখ','শুরু','শেষ','সময়কাল','দেশ','রাজ্য','শহর','ইন্ডাস্ট্রি','Leads'];
+    const rows = hist.map(e => `
+      <tr>
+        <td>${e.date}</td>
+        <td>${e.startTime}</td>
+        <td>${e.endTime}</td>
+        <td style="color:#a78bfa;font-weight:700;">${e.duration}</td>
+        <td>${e.country}</td>
+        <td>${e.state}</td>
+        <td>${e.city}</td>
+        <td>${e.industry}</td>
+        <td><span class="hist-leads-badge">${e.leads}</span></td>
+      </tr>`).join('');
+
+    container.innerHTML = `
+      <div class="hist-wrap">
+        <table class="hist-table">
+          <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="font-size:11px;color:var(--text-dim);text-align:right;margin-top:8px;">
+          সর্বশেষ ৩০ দিনের ${hist.length}টি session | localStorage-এ সংরক্ষিত
+        </div>
+      </div>`;
+  }
+
+  function showResultsTab(tab) {
+    document.getElementById('live-pane').style.display    = tab === 'live'    ? 'block' : 'none';
+    document.getElementById('history-pane').style.display = tab === 'history' ? 'block' : 'none';
+    document.getElementById('rtab-live').classList.toggle('active',    tab === 'live');
+    document.getElementById('rtab-history').classList.toggle('active', tab === 'history');
+    if (tab === 'history') renderHistory();
+  }
 
   // ══════════════════════════════════════════
   //  TOAST
@@ -1518,6 +1738,7 @@
   // ══════════════════════════════════════════
   loadCountries();
   restoreSession();
+  renderHistory();
 </script>
 </body>
 </html>
