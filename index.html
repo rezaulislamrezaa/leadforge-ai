@@ -548,7 +548,10 @@
     <div id="live-feed-section">
       <div class="feed-title" style="display:flex;align-items:center;justify-content:space-between;">
         <span><i class="fa-solid fa-terminal"></i> Live Log</span>
-        <button onclick="clearFeedLog()" style="background:none;border:1px solid #334;color:#556;font-size:11px;padding:2px 8px;border-radius:6px;cursor:pointer;" title="লগ মুছুন">✕ Clear</button>
+        <div style="display:flex;gap:6px;">
+          <button onclick="copyFeedLog(this)" style="background:none;border:1px solid #334;color:#8af;font-size:11px;padding:2px 10px;border-radius:6px;cursor:pointer;" title="লগ কপি করুন"><i class="fa-regular fa-copy"></i> Copy</button>
+          <button onclick="clearFeedLog()" style="background:none;border:1px solid #334;color:#556;font-size:11px;padding:2px 8px;border-radius:6px;cursor:pointer;" title="লগ মুছুন">✕ Clear</button>
+        </div>
       </div>
       <div id="live-feed-log"><div class="feed-line feed-info">Ready — press Start Mining to begin.</div></div>
     </div>
@@ -1020,11 +1023,15 @@
   //  POLLING — n8n execution status every 30s
   // ──────────────────────────────────────────
   const DISCOVERY_WF_ID = 'ZLWioSuUtTM0W2Yy';
+  let   pollFailCount   = 0;
 
   function startPolling() {
     if (pollTimer) return;
+    const apiKey = localStorage.getItem('lf_n8n_api') || '';
+    if (!apiKey) return; // no key → no polling, no error spam
+    pollFailCount = 0;
     pollTimer = setInterval(checkN8nStatus, 30000);
-    setTimeout(checkN8nStatus, 2000); // immediate first check
+    setTimeout(checkN8nStatus, 3000); // first check after 3s
   }
 
   function stopPolling() {
@@ -1033,37 +1040,71 @@
 
   async function checkN8nStatus() {
     const apiKey = localStorage.getItem('lf_n8n_api') || '';
-    if (!apiKey) return;
+    if (!apiKey) { stopPolling(); return; }
     try {
       const res = await fetch(
         `${N8N_BASE}/api/v1/executions?workflowId=${DISCOVERY_WF_ID}&status=running&limit=5`,
-        { headers: { 'Authorization': `Bearer ${apiKey}`, 'ngrok-skip-browser-warning': '1' } }
+        {
+          headers: { 'Authorization': `Bearer ${apiKey}`, 'ngrok-skip-browser-warning': '1' },
+          signal: AbortSignal.timeout(10000)
+        }
       );
-      if (!res.ok) return;
+      if (!res.ok) { pollFailCount++; if (pollFailCount >= 3) stopPolling(); return; }
+      pollFailCount = 0;
       const data = await res.json();
       const running = data.data?.length || 0;
       if (running > 0) {
         feedLog(`n8n: Discovery workflow চলছে (${running} execution active) — Sheets-এ leads আসছে`, 'ok');
       } else {
-        // check recent finished executions
         const res2 = await fetch(
           `${N8N_BASE}/api/v1/executions?workflowId=${DISCOVERY_WF_ID}&status=success&limit=1`,
-          { headers: { 'Authorization': `Bearer ${apiKey}`, 'ngrok-skip-browser-warning': '1' } }
+          { headers: { 'Authorization': `Bearer ${apiKey}`, 'ngrok-skip-browser-warning': '1' }, signal: AbortSignal.timeout(10000) }
         );
-        const data2 = await res2.json();
-        const lastRun = data2.data?.[0];
-        if (lastRun) {
-          const finishedAt = new Date(lastRun.stoppedAt).toLocaleTimeString();
-          feedLog(`n8n: Workflow শেষ হয়েছে (${finishedAt}) — Google Sheets-এ leads চেক করুন`, 'info');
-        } else {
-          feedLog(`n8n: কোনো active execution নেই — workflow থেমে গেছে বা সম্পন্ন`, 'info');
+        if (res2.ok) {
+          const data2 = await res2.json();
+          const lastRun = data2.data?.[0];
+          if (lastRun) {
+            const finishedAt = new Date(lastRun.stoppedAt).toLocaleTimeString();
+            feedLog(`n8n: Workflow সম্পন্ন (${finishedAt}) — Google Sheets-এ leads চেক করুন`, 'ok');
+          } else {
+            feedLog(`n8n: Workflow থেমে গেছে বা সম্পন্ন — Sheets চেক করুন`, 'info');
+          }
         }
         stopPolling();
         localStorage.removeItem(LS_SESSION);
       }
-    } catch (e) {
-      feedLog(`n8n status check failed: ${e.message}`, 'err');
+    } catch {
+      // CORS বা network error — চুপ করে fail করো, log spam করো না
+      pollFailCount++;
+      if (pollFailCount >= 3) {
+        stopPolling(); // 3 বার fail হলে polling বন্ধ
+      }
     }
+  }
+
+  // ──────────────────────────────────────────
+  //  COPY FEED LOG
+  // ──────────────────────────────────────────
+  function copyFeedLog(btn) {
+    const log = document.getElementById('live-feed-log');
+    if (!log) return;
+    const text = Array.from(log.querySelectorAll('.feed-line'))
+      .map(el => el.textContent).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+      btn.style.color = '#00ff88';
+      setTimeout(() => { btn.innerHTML = orig; btn.style.color = '#8af'; }, 2000);
+    }).catch(() => {
+      // fallback for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+      setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy'; }, 2000);
+    });
   }
 
   function updateDailyProgress(count) {
