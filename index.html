@@ -1102,7 +1102,7 @@
     }
   }
 
-  function restoreSession() {
+  async function restoreSession() {
     // Restore live log
     try {
       const entries = JSON.parse(localStorage.getItem(LS_LOG) || '[]');
@@ -1123,31 +1123,63 @@
     // Restore dual-button + polling if session was active
     try {
       const session = JSON.parse(localStorage.getItem(LS_SESSION) || 'null');
-      if (session?.active) {
-        miningStartTs = session.startTs || Date.now();
-        // Restore elapsed timer display
-        const elapsedMs  = Date.now() - miningStartTs;
-        elapsedSec = Math.round(elapsedMs / 1000);
-        const startLabel = document.getElementById('run-started-label');
-        if (startLabel) startLabel.textContent = 'শুরু: ' + new Date(miningStartTs).toLocaleTimeString();
-        const elLabel = document.getElementById('stop-elapsed-label');
-        if (elLabel) elLabel.textContent = fmtElapsed(elapsedSec);
-        // Resume ticking
-        clearInterval(miningTimer);
-        miningTimer = setInterval(() => {
-          elapsedSec++;
-          const el = document.getElementById('stop-elapsed-label');
-          if (el) el.textContent = fmtElapsed(elapsedSec);
-          document.getElementById('stat-time').textContent = fmtElapsed(elapsedSec);
-        }, 1000);
-        // Show two-button layout
-        document.getElementById('wrap-start').style.display  = 'none';
-        document.getElementById('wrap-mining').style.display = 'flex';
-        showResults(true);
-        showBackgroundPanel();
-        startPolling();
-        feedLog(`(페이지 복원) Mining চলছে — ${session.industry || ''} in ${session.city || session.state || session.country || ''} | শুরু: ${new Date(miningStartTs).toLocaleTimeString()}`, 'info');
+      if (!session?.active) return;
+
+      // n8n থেকে verify করো — পিসি বন্ধ ছিলে session stale হতে পারে
+      const apiKey = localStorage.getItem('lf_n8n_api') || '';
+      if (apiKey) {
+        try {
+          const res = await fetch(
+            `${N8N_BASE}/api/v1/executions?workflowId=${DISCOVERY_WF_ID}&limit=1`,
+            { headers: { 'X-N8N-API-KEY': apiKey, 'ngrok-skip-browser-warning': '1' }, signal: AbortSignal.timeout(8000) }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const latest = data.data?.[0];
+            if (latest) {
+              const lastTime = new Date(latest.stoppedAt || latest.startedAt);
+              const secAgo = Math.round((Date.now() - lastTime) / 1000);
+              if (secAgo > 300) {
+                // 5 মিনিটের বেশি আগে শেষ execution → n8n বন্ধ ছিলো
+                localStorage.removeItem(LS_SESSION);
+                feedLog(`⚠ Session রিস্টোর বাতিল — শেষ execution ${Math.round(secAgo / 60)}m আগে। পিসি বন্ধ থাকায় mining বন্ধ হয়ে গিয়েছিলো।`, 'warn');
+                return;
+              }
+            } else {
+              // কোনো execution নেই — session stale
+              localStorage.removeItem(LS_SESSION);
+              return;
+            }
+          }
+        } catch {
+          // n8n reachable নয় — সতর্কতার সাথে restore করো
+          feedLog(`⚠ n8n status যাচাই করা যায়নি (offline?) — Session সতর্কতার সাথে রিস্টোর করা হচ্ছে`, 'warn');
+        }
       }
+
+      miningStartTs = session.startTs || Date.now();
+      // Restore elapsed timer display
+      const elapsedMs  = Date.now() - miningStartTs;
+      elapsedSec = Math.round(elapsedMs / 1000);
+      const startLabel = document.getElementById('run-started-label');
+      if (startLabel) startLabel.textContent = 'শুরু: ' + new Date(miningStartTs).toLocaleTimeString();
+      const elLabel = document.getElementById('stop-elapsed-label');
+      if (elLabel) elLabel.textContent = fmtElapsed(elapsedSec);
+      // Resume ticking
+      clearInterval(miningTimer);
+      miningTimer = setInterval(() => {
+        elapsedSec++;
+        const el = document.getElementById('stop-elapsed-label');
+        if (el) el.textContent = fmtElapsed(elapsedSec);
+        document.getElementById('stat-time').textContent = fmtElapsed(elapsedSec);
+      }, 1000);
+      // Show two-button layout
+      document.getElementById('wrap-start').style.display  = 'none';
+      document.getElementById('wrap-mining').style.display = 'flex';
+      showResults(true);
+      showBackgroundPanel();
+      startPolling();
+      feedLog(`(পেজ রিস্টোর) Mining চলছে — ${session.industry || ''} in ${session.city || session.state || session.country || ''} | শুরু: ${new Date(miningStartTs).toLocaleTimeString()}`, 'info');
     } catch {}
   }
 
@@ -1177,7 +1209,7 @@
       const res = await fetch(
         `${N8N_BASE}/api/v1/executions?workflowId=${DISCOVERY_WF_ID}&status=running&limit=5`,
         {
-          headers: { 'Authorization': `Bearer ${apiKey}`, 'ngrok-skip-browser-warning': '1' },
+          headers: { 'X-N8N-API-KEY': apiKey, 'ngrok-skip-browser-warning': '1' },
           signal: AbortSignal.timeout(10000)
         }
       );
@@ -1190,7 +1222,7 @@
       } else {
         const res2 = await fetch(
           `${N8N_BASE}/api/v1/executions?workflowId=${DISCOVERY_WF_ID}&status=success&limit=1`,
-          { headers: { 'Authorization': `Bearer ${apiKey}`, 'ngrok-skip-browser-warning': '1' }, signal: AbortSignal.timeout(10000) }
+          { headers: { 'X-N8N-API-KEY': apiKey, 'ngrok-skip-browser-warning': '1' }, signal: AbortSignal.timeout(10000) }
         );
         if (res2.ok) {
           const data2 = await res2.json();
